@@ -1,0 +1,4 @@
+// 部署前請貼上 Apps Script「網頁應用程式」網址(結尾是 /exec)
+window.XMAS_CONFIG = {
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbydYYKdebO2Vlwzj_PmF8PtwPGK7ZwQTkLRHF4iuZjg8Nzh9y4Bdfu5arbKLZtk62PC/exec"
+};
