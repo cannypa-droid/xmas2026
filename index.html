@@ -84,8 +84,8 @@ th{color:var(--red2);font-size:13px}
 /* ---- 聖誕卡片(文字區位置以圖片比例定位) ---- */
 .cardwrap{display:flex;flex-direction:column;align-items:center;animation:pop .7s ease-out}
 @keyframes pop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
-.card{position:relative;width:min(92vw,430px);aspect-ratio:2/3;border-radius:6px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.4);background:#fff}
-.card img{display:block;width:100%;height:100%;object-fit:contain}
+.card{position:relative;width:min(92vw,430px);box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.card img{display:block;width:100%;height:auto}
 .slipbox{position:absolute;left:var(--bx,27%);width:var(--bw,46%);top:var(--by,38%);height:var(--bh,31%);display:flex;align-items:center;justify-content:center;text-align:center}
 .sliptext{color:#4a2c17;font-weight:700;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;max-height:100%;width:100%}
 .footer{color:#9fbad4;font-size:12px;text-align:center;margin-top:20px}
@@ -357,9 +357,9 @@ function renderP(){
   }
 }
 function showCard(text){
-  stopPoll();
+  stopPoll();try{window.XMASAUDIO&&window.XMASAUDIO.chime()}catch(e){}var sn=document.getElementById("snow");if(sn)sn.style.display="none";
   app.innerHTML='<h1>🎄 '+esc(ps_.event_name)+'</h1><p class="sub">Hi,'+esc(ps_.my_name)+',你抽到的是</p>'+
-   '<div class="cardwrap"><div class="card" id="card"><img src="card.jpg" alt="聖誕卡片" id="cardimg"><div class="slipbox" id="slipbox"><div class="sliptext" id="sliptext"></div></div></div>'+
+   '<div class="cardwrap"><div class="card" id="card"><img src="card.jpg?v=1" alt="聖誕卡片" id="cardimg"><div class="slipbox" id="slipbox"><div class="sliptext" id="sliptext"></div></div></div>'+
    '<div style="height:14px"></div><button id="save" class="bigbtn" style="font-size:17px;padding:13px 28px">💾 儲存成圖片</button>'+
    '<div class="cap" style="margin-top:12px">每人只能抽一次,重新整理或重新開啟連結都會看到同一張 🎁</div></div>';
   $("#sliptext").textContent=text;
@@ -402,7 +402,7 @@ function renderPng(text){
       var lh=fs*1.4,top=by+bh/2-lines.length*lh/2;
       lines.forEach(function(l,i){ctx.fillText(l,bx+bw/2,top+lh*i+lh/2)});
       c.toBlob(function(b){b?res(b):rej(new Error("toBlob"))},"image/png");
-    };img.onerror=function(){rej(new Error("img"))};img.src="card.jpg";
+    };img.onerror=function(){rej(new Error("img"))};img.src="card.jpg?v=1";
   });
 }
 function saveCard(text){
@@ -423,5 +423,73 @@ function saveCard(text){
 }
 })();
 </script>
+<button id="musicbtn" aria-label="背景音樂開關" title="背景音樂">🔔</button>
+<style>
+#musicbtn{position:fixed;right:12px;top:calc(env(safe-area-inset-top,0px) + 10px);z-index:40;width:44px;height:44px;padding:0;border-radius:50%;font-size:22px;line-height:44px;background:rgba(255,255,255,.92);color:#b3262d;border:2px solid #d9a93b;box-shadow:0 3px 10px rgba(0,0,0,.3)}
+#musicbtn.off{opacity:.7;filter:grayscale(1)}
+#musicbtn.hint{animation:mpulse 1.6s ease-in-out infinite}
+@keyframes mpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+</style>
+<script>
+/* 聖誕背景音樂:預設用 Web Audio 即時合成「音樂盒」音色演奏傳統聖誕歌曲(公有領域旋律,無版權問題)。
+   若在網站資料夾放入 music.mp3,會改播該檔案。手機必須點一下畫面才能發聲(瀏覽器規定)。 */
+(function(){
+  var KEY="xmas_music", btn=document.getElementById("musicbtn");
+  var wantOn=true; try{ if(localStorage.getItem(KEY)==="off") wantOn=false; }catch(e){}
+  var ctx=null, master=null, started=false, nextEnd=0, poller=null, fileEl=null, hasFile=false, songIdx=0;
+  var F={C4:261.63,D4:293.66,E4:329.63,F4:349.23,G4:392,A4:440,B4:493.88,C5:523.25,D5:587.33,E5:659.25,F5:698.46,G5:783.99,A5:880,C6:1046.5};
+  var WISH=[["G4",1],["C5",1],["C5",.5],["D5",.5],["C5",.5],["B4",.5],["A4",1],["A4",1],["A4",1],["D5",1],["D5",.5],["E5",.5],["D5",.5],["C5",.5],["B4",1],["G4",1],["G4",1],["E5",1],["E5",.5],["F5",.5],["E5",.5],["D5",.5],["C5",1],["A4",1],["G4",.5],["G4",.5],["A4",1],["D5",1],["B4",1],["C5",3],["R",2]];
+  var JINGLE=[["E5",1],["E5",1],["E5",2],["E5",1],["E5",1],["E5",2],["E5",1],["G5",1],["C5",1.5],["D5",.5],["E5",4],["F5",1],["F5",1],["F5",1.5],["F5",.5],["F5",1],["E5",1],["E5",1],["E5",.5],["E5",.5],["E5",1],["D5",1],["D5",1],["E5",1],["D5",2],["G5",2],["R",2]];
+  var JOY=[["C5",1],["B4",1.5],["A4",.5],["G4",1.5],["F4",.5],["E4",1],["D4",1],["C4",2],["R",1],["G4",1],["A4",1.5],["A4",.5],["B4",1.5],["B4",.5],["C5",3],["R",3]];
+  var SONGS=[[WISH,.55],[JINGLE,.5],[JOY,.6]];   // [旋律, 每拍秒數]
+  function tone(f,t,d,vol){
+    var o1=ctx.createOscillator(),o2=ctx.createOscillator(),g=ctx.createGain();
+    o1.type="sine";o2.type="triangle";o1.frequency.value=f;o2.frequency.value=f*2;
+    var end=t+Math.max(d,.35)+1.1;
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,end);
+    var g2=ctx.createGain();g2.gain.value=.35;o2.connect(g2);g2.connect(g);o1.connect(g);g.connect(master);
+    o1.start(t);o2.start(t);o1.stop(end+.05);o2.stop(end+.05);
+  }
+  function scheduleSong(){
+    var s=SONGS[songIdx%SONGS.length];songIdx++;
+    var t=Math.max(ctx.currentTime,nextEnd)+.15;
+    s[0].forEach(function(n){ if(n[0]!=="R") tone(F[n[0]],t,n[1]*s[1],.2); t+=n[1]*s[1]; });
+    nextEnd=t;
+  }
+  function tick(){ if(ctx&&ctx.state==="running"&&ctx.currentTime>nextEnd-1.5) scheduleSong(); }
+  function setUI(on){ if(!btn)return; btn.textContent=on?"🔔":"🔕"; btn.className=on?"":"off"; btn.title=on?"關閉背景音樂":"開啟背景音樂"; }
+  function start(){
+    started=true; btn.classList.remove("hint");
+    if(hasFile){ if(!fileEl){fileEl=new Audio("music.mp3");fileEl.loop=true;fileEl.volume=.5;} fileEl.play().catch(function(){}); return; }
+    var AC=window.AudioContext||window.webkitAudioContext; if(!AC)return;
+    if(!ctx){ ctx=new AC(); master=ctx.createGain(); master.gain.value=.5; master.connect(ctx.destination); nextEnd=0; }
+    var go=function(){ if(!poller){ scheduleSong(); poller=setInterval(tick,400); } };
+    if(ctx.state==="suspended") ctx.resume().then(go,go); else go();
+  }
+  function stop(){ if(fileEl)fileEl.pause(); if(ctx&&ctx.state==="running")ctx.suspend(); }
+  function toggle(e){
+    if(e){e.stopPropagation();}
+    wantOn=!wantOn; try{localStorage.setItem(KEY,wantOn?"on":"off")}catch(x){}
+    setUI(wantOn); if(wantOn)start(); else stop();
+  }
+  btn.addEventListener("click",toggle);
+  function firstGesture(){
+    if(started)return;
+    if(wantOn) start();
+    if(started){document.removeEventListener("click",firstGesture,true);document.removeEventListener("touchend",firstGesture,true);}
+  }
+  document.addEventListener("click",firstGesture,true);
+  document.addEventListener("touchend",firstGesture,true);
+  document.addEventListener("visibilitychange",function(){
+    if(document.hidden)stop(); else if(wantOn&&started){ if(fileEl)fileEl.play().catch(function(){}); else if(ctx)ctx.resume(); }
+  });
+  setUI(wantOn); if(wantOn) btn.classList.add("hint");
+  try{ fetch("music.mp3",{method:"HEAD"}).then(function(r){ if(r.ok){hasFile=true;} }).catch(function(){}); }catch(e){}
+  window.XMASAUDIO={ chime:function(){
+    try{ if(!ctx||ctx.state!=="running"||!wantOn)return; var t=ctx.currentTime+.05;
+      ["C5","E5","G5","C6"].forEach(function(n,i){tone(F[n],t+i*.11,.3,.28)}); }catch(e){} } };
+})();
+</script>
+
 </body>
 </html>
